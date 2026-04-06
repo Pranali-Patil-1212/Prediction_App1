@@ -41,26 +41,32 @@ jobs:
           ML_SERVICE_FAST_TRAIN=1 python -m ml_service.train
 
       - name: Upload model to S3
-        id: upload
-        env:
-          OUTPUT_MODEL_PATH: ${{ runner.temp }}/best_diabetes_prediction.joblib
         run: |
           python - <<'PY'
-          import os, boto3
+          import os
+          import boto3
 
+          path = os.environ["OUTPUT_MODEL_PATH"]
           bucket = os.environ["S3_BUCKET"]
-          key    = os.environ["S3_MODEL_KEY"]
-          path   = os.environ["OUTPUT_MODEL_PATH"]
+          key = os.environ["S3_MODEL_KEY"]
 
-          s3 = boto3.client("s3", region_name=os.environ["AWS_DEFAULT_REGION"])
+          print("Path:", path)
+          print("Bucket:", bucket)
+          print("Key:", key)
+
+          if not os.path.exists(path):
+              raise FileNotFoundError(f"Model not found at {path}")
+
+          s3 = boto3.client(
+              "s3",
+              region_name=os.environ["AWS_DEFAULT_REGION"]
+          )
+
           s3.upload_file(path, bucket, key)
 
-          uri = f"s3://{bucket}/{key}"
-          print(f"Uploaded → {uri}")
-
-          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-              f.write(f"model_s3_uri={uri}\n")
+          print("✅ Upload successful")
           PY
+
   # ── 2. Build & push Docker images ────────────────────────────────────────
   build-and-push:
     needs: train
