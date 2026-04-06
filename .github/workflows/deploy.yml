@@ -41,27 +41,23 @@ jobs:
           ML_SERVICE_FAST_TRAIN=1 python -m ml_service.train
 
       - name: Upload model to S3
+        id: upload
+        env:
+          OUTPUT_MODEL_PATH: ${{ runner.temp }}/best_diabetes_prediction.joblib
         run: |
           python - <<'PY'
-          import os
-          import boto3
+          import os, boto3
 
-          path = os.environ["OUTPUT_MODEL_PATH"]
           bucket = os.environ["S3_BUCKET"]
-          key = os.environ["S3_MODEL_KEY"]
+          key    = os.environ["S3_MODEL_KEY"]
+          path   = os.environ["OUTPUT_MODEL_PATH"]
 
           print("Path:", path)
-          print("Bucket:", bucket)
-          print("Key:", key)
 
           if not os.path.exists(path):
               raise FileNotFoundError(f"Model not found at {path}")
 
-          s3 = boto3.client(
-              "s3",
-              region_name=os.environ["AWS_DEFAULT_REGION"]
-          )
-
+          s3 = boto3.client("s3", region_name=os.environ["AWS_DEFAULT_REGION"])
           s3.upload_file(path, bucket, key)
 
           print("✅ Upload successful")
